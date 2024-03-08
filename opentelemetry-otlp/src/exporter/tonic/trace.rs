@@ -52,7 +52,7 @@ impl SpanExporter for TonicTracesClient {
                 let (m, e, _) = match inner.interceptor.call(Request::new(())) {
                     Ok(res) => res.into_parts(),
                     Err(e) => {
-                        return Box::pin(std::future::ready(Err(TraceError::Other(Box::new(e)))))
+                        return Box::pin(std::future::ready(Err(TraceError::Other(Box::new(e)))));
                     }
                 };
                 (inner.client.clone(), m, e)
@@ -60,7 +60,7 @@ impl SpanExporter for TonicTracesClient {
             None => {
                 return Box::pin(std::future::ready(Err(TraceError::Other(
                     "exporter is already shut down".into(),
-                ))))
+                ))));
             }
         };
 
@@ -70,7 +70,11 @@ impl SpanExporter for TonicTracesClient {
                     metadata,
                     extensions,
                     ExportTraceServiceRequest {
-                        resource_spans: batch.into_iter().map(Into::into).collect(),
+                        resource_spans: {
+                            let spans = batch.into_iter().map(Into::into).collect();
+                            println!("exported spans: {:?}", &spans);
+                            spans
+                        },
                     },
                 ))
                 .await
