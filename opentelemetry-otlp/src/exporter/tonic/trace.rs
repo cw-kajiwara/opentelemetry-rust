@@ -2,9 +2,7 @@ use core::fmt;
 
 use futures_core::future::BoxFuture;
 use opentelemetry::trace::TraceError;
-use opentelemetry_proto::tonic::collector::trace::v1::{
-    trace_service_client::TraceServiceClient, ExportTraceServiceRequest,
-};
+use opentelemetry_proto::tonic::collector::trace::v1::{trace_service_client::TraceServiceClient, ExportTraceServiceRequest};
 use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
 use tonic::{codegen::CompressionEncoding, service::Interceptor, transport::Channel, Request};
 
@@ -65,20 +63,25 @@ impl SpanExporter for TonicTracesClient {
         };
 
         Box::pin(async move {
-            client
+            let exported_spans = client
                 .export(Request::from_parts(
                     metadata,
                     extensions,
                     ExportTraceServiceRequest {
                         resource_spans: {
                             let spans = batch.into_iter().map(Into::into).collect();
-                            println!("exported spans: {:?}", &spans);
+                            println!("exporting span {:?}", &spans);
                             spans
                         },
                     },
                 ))
                 .await
                 .map_err(crate::Error::from)?;
+
+            match exported_spans.into_inner().partial_success {
+                Some(v) => println!("exporting span failed, result {:?}", v),
+                None => println!("exporting span succeeded")
+            };
 
             Ok(())
         })
