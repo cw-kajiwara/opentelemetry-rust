@@ -78,10 +78,7 @@ impl SpanExporter for TonicTracesClient {
                 .await
                 .map_err(crate::Error::from)?;
 
-            match exported_spans.into_inner().partial_success {
-                Some(v) => println!("exporting span failed, result {:?}", v),
-                None => println!("exporting span succeeded")
-            };
+            println!("exporting span result {:?}", exported_spans.into_inner().partial_success);
 
             Ok(())
         })
