@@ -284,14 +284,17 @@ impl<R: RuntimeChannel> SpanProcessor for BatchSpanProcessor<R> {
     }
 
     fn force_flush(&self) -> TraceResult<()> {
+        println!("start flushing spans");
         let (res_sender, res_receiver) = oneshot::channel();
         self.message_sender
             .try_send(BatchMessage::Flush(Some(res_sender)))
             .map_err(|err| TraceError::Other(err.into()))?;
 
-        futures_executor::block_on(res_receiver)
+        let res = futures_executor::block_on(res_receiver)
             .map_err(|err| TraceError::Other(err.into()))
-            .and_then(|identity| identity)
+            .and_then(|identity| identity);
+        println!("finish flushing spans");
+        res
     }
 
     fn shutdown(&mut self) -> TraceResult<()> {
@@ -444,7 +447,7 @@ impl<R: RuntimeChannel> BatchSpanProcessorInternal<R> {
         })
     }
 
-    async fn run(mut self, mut messages: impl Stream<Item = BatchMessage> + Unpin + FusedStream) {
+    async fn run(mut self, mut messages: impl Stream<Item=BatchMessage> + Unpin + FusedStream) {
         loop {
             select! {
                 // FuturesUnordered implements Fuse intelligently such that it
@@ -494,8 +497,8 @@ impl<R: RuntimeChannel> BatchSpanProcessor<R> {
 
     /// Create a new batch processor builder
     pub fn builder<E>(exporter: E, runtime: R) -> BatchSpanProcessorBuilder<E, R>
-    where
-        E: SpanExporter,
+        where
+            E: SpanExporter,
     {
         BatchSpanProcessorBuilder {
             exporter,
@@ -567,7 +570,7 @@ impl Default for BatchConfigBuilder {
             max_export_timeout: Duration::from_millis(OTEL_BSP_EXPORT_TIMEOUT_DEFAULT),
             max_concurrent_exports: OTEL_BSP_MAX_CONCURRENT_EXPORTS_DEFAULT,
         }
-        .init_from_env_vars()
+            .init_from_env_vars()
     }
 }
 
@@ -690,9 +693,9 @@ pub struct BatchSpanProcessorBuilder<E, R> {
 }
 
 impl<E, R> BatchSpanProcessorBuilder<E, R>
-where
-    E: SpanExporter + 'static,
-    R: RuntimeChannel,
+    where
+        E: SpanExporter + 'static,
+        R: RuntimeChannel,
 {
     /// Set the BatchConfig for [BatchSpanProcessorBuilder]
     pub fn with_batch_config(self, config: BatchConfig) -> Self {
@@ -926,9 +929,9 @@ mod tests {
     }
 
     impl<D, DS> Debug for BlockingExporter<D>
-    where
-        D: Fn(Duration) -> DS + 'static + Send + Sync,
-        DS: Future<Output = ()> + Send + Sync + 'static,
+        where
+            D: Fn(Duration) -> DS + 'static + Send + Sync,
+            DS: Future<Output=()> + Send + Sync + 'static,
     {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str("blocking exporter for testing")
@@ -937,9 +940,9 @@ mod tests {
 
     #[async_trait]
     impl<D, DS> SpanExporter for BlockingExporter<D>
-    where
-        D: Fn(Duration) -> DS + 'static + Send + Sync,
-        DS: Future<Output = ()> + Send + Sync + 'static,
+        where
+            D: Fn(Duration) -> DS + 'static + Send + Sync,
+            DS: Future<Output=()> + Send + Sync + 'static,
     {
         fn export(
             &mut self,
