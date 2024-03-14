@@ -5,6 +5,7 @@ use opentelemetry::trace::TraceError;
 use opentelemetry_proto::tonic::collector::trace::v1::{trace_service_client::TraceServiceClient, ExportTraceServiceRequest};
 use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
 use tonic::{codegen::CompressionEncoding, service::Interceptor, transport::Channel, Request};
+use opentelemetry_proto::tonic::trace::v1::ResourceSpans;
 
 use super::BoxInterceptor;
 
@@ -69,8 +70,13 @@ impl SpanExporter for TonicTracesClient {
                     extensions,
                     ExportTraceServiceRequest {
                         resource_spans: {
-                            let spans = batch.into_iter().map(Into::into).collect();
-                            println!("exporting span {:?}", &spans);
+                            let spans: Vec<ResourceSpans> = batch.into_iter().map(Into::into).collect();
+                            let span_names = &spans.iter().flat_map(|rs|
+                                rs.scope_spans.iter().flat_map(|ss|
+                                    ss.spans.iter().map(|s| s.name.clone())
+                                ).collect::<Vec<_>>()
+                            ).collect::<Vec<_>>();
+                            println!("exporting span {:?}", span_names);
                             spans
                         },
                     },
